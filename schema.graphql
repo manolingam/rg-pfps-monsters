@@ -5,6 +5,21 @@ type Monster @entity {
   currentOwner: Owner!
   mintInfo: Mint!
   tradeInfo: Trade
+  monsterInfo: MonsterBook!
+}
+
+type MonsterBook @entity {
+  id: ID!
+  monster: Monster! @derivedFrom(field: "monsterInfo")
+  name: String!
+  size: String!
+  weakness: String!
+  specialAbility: String!
+  locomotion: String!
+  language: String!
+  alignment: String!
+  action1: String!
+  action2: String!
 }
 
 type Owner @entity {

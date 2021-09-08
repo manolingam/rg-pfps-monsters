@@ -6,7 +6,7 @@ dataSources:
     name: MonsterSpawn
     network: mainnet
     source:
-      address: "0xeCb9B2EA457740fBDe58c758E4C574834224413e"
+      address: '0xeCb9B2EA457740fBDe58c758E4C574834224413e'
       abi: MonsterSpawn
       startBlock: 13154572
     mapping:
@@ -14,10 +14,15 @@ dataSources:
       apiVersion: 0.0.4
       language: wasm/assemblyscript
       entities:
-        - Transfer
+        - Monster
+        - Owner
+        - Mint
+        - Trade
       abis:
         - name: MonsterSpawn
           file: ./abis/MonsterSpawn.json
+        - name: MonsterBook
+          file: ./abis/MonsterBook.json
       eventHandlers:
         - event: Transfer(indexed address,indexed address,indexed uint256)
           handler: handleTransfer
