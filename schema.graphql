@@ -1,6 +1,31 @@
-type ExampleEntity @entity {
+type Monster @entity {
   id: ID!
-  count: BigInt!
-  owner: Bytes! # address
-  approved: Bytes! # address
+  tokenId: BigInt!
+  tokenUri: String!
+  currentOwner: Owner!
+  mintInfo: Mint!
+  tradeInfo: Trade
+}
+
+type Owner @entity {
+  id: ID!
+  address: Bytes!
+  monsters: [Monster!]! @derivedFrom(field: "currentOwner")
+  mints: [Mint!] @derivedFrom(field: "minter")
+  trades: [Trade!] @derivedFrom(field: "oldOwner")
+}
+
+type Mint @entity {
+  id: ID!
+  minter: Owner!
+  monster: Monster! @derivedFrom(field: "mintInfo")
+  time: BigInt!
+}
+
+type Trade @entity {
+  id: ID!
+  oldOwner: Owner!
+  newOwner: Owner!
+  monster: Monster! @derivedFrom(field: "tradeInfo")
+  time: BigInt!
 }

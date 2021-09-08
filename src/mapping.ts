@@ -1,68 +1,74 @@
-import { BigInt } from "@graphprotocol/graph-ts"
 import {
-  MonsterSpawn,
-  Approval,
-  ApprovalForAll,
-  OwnershipTransferred,
-  Transfer
-} from "../generated/MonsterSpawn/MonsterSpawn"
-import { ExampleEntity } from "../generated/schema"
+  Transfer,
+  MonsterSpawn as MonsterContract
+} from '../generated/MonsterSpawn/MonsterSpawn';
+import { Mint, Monster, Owner, Trade } from '../generated/schema';
 
-export function handleApproval(event: Approval): void {
-  // Entities can be loaded from the store using a string ID; this ID
-  // needs to be unique across all entities of the same type
-  let entity = ExampleEntity.load(event.transaction.from.toHex())
+const zeroAddress = '0x0000000000000000000000000000000000000000';
 
-  // Entities only exist after they have been saved to the store;
-  // `null` checks allow to create entities on demand
-  if (entity == null) {
-    entity = new ExampleEntity(event.transaction.from.toHex())
+function handleClaim(event: Transfer): void {
+  let mint = new Mint(event.transaction.hash.toHex());
 
-    // Entity fields can be set using simple assignments
-    entity.count = BigInt.fromI32(0)
+  let monster = new Monster(event.params.tokenId.toHex());
+  let minter = Owner.load(event.params.to.toHex());
+
+  if (minter == null) {
+    minter = new Owner(event.params.to.toHex());
   }
 
-  // BigInt and BigDecimal math are supported
-  entity.count = entity.count + BigInt.fromI32(1)
+  let monsterContract = MonsterContract.bind(event.address);
+  let mintedTokenUri = monsterContract.tokenURI(event.params.tokenId);
 
-  // Entity fields can be set based on event parameters
-  entity.owner = event.params.owner
-  entity.approved = event.params.approved
+  minter.address = event.params.to;
 
-  // Entities can be written to the store with `.save()`
-  entity.save()
+  mint.minter = minter.id;
+  mint.time = event.block.timestamp;
 
-  // Note: If a handler doesn't require existing field values, it is faster
-  // _not_ to load the entity from the store. Instead, create it fresh with
-  // `new Entity(...)`, set the fields that should be updated and save the
-  // entity back to the store. Fields that were not set or unset remain
-  // unchanged, allowing for partial updates to be applied.
+  monster.tokenId = event.params.tokenId;
+  monster.currentOwner = minter.id;
+  monster.tokenUri = mintedTokenUri;
+  monster.mintInfo = mint.id;
 
-  // It is also possible to access smart contracts from mappings. For
-  // example, the contract that has emitted the event can be connected to
-  // with:
-  //
-  // let contract = Contract.bind(event.address)
-  //
-  // The following functions can then be called on this contract to access
-  // state variables and other data:
-  //
-  // - contract.balanceOf(...)
-  // - contract.getApproved(...)
-  // - contract.isApprovedForAll(...)
-  // - contract.name(...)
-  // - contract.owner(...)
-  // - contract.ownerOf(...)
-  // - contract.supportsInterface(...)
-  // - contract.symbol(...)
-  // - contract.tokenByIndex(...)
-  // - contract.tokenOfOwnerByIndex(...)
-  // - contract.tokenURI(...)
-  // - contract.totalSupply(...)
+  mint.save();
+  minter.save();
+  monster.save();
 }
 
-export function handleApprovalForAll(event: ApprovalForAll): void {}
+function handleOwnerChange(event: Transfer): void {
+  let trade = new Trade(event.transaction.hash.toHex());
+  let monster = Monster.load(event.params.tokenId.toHex());
+  let oldOwner = Owner.load(event.params.from.toHex());
+  let newOwner = Owner.load(event.params.to.toHex());
 
-export function handleOwnershipTransferred(event: OwnershipTransferred): void {}
+  if (newOwner == null) {
+    newOwner = new Owner(event.params.to.toHex());
+    newOwner.address = event.params.to;
+  }
 
-export function handleTransfer(event: Transfer): void {}
+  if (monster == null) {
+    monster = new Monster(event.params.tokenId.toHex());
+  }
+
+  trade.oldOwner = oldOwner.id;
+  trade.newOwner = newOwner.id;
+  trade.time = event.block.timestamp;
+
+  monster.currentOwner = newOwner.id;
+  monster.tradeInfo = trade.id;
+
+  newOwner.save();
+  oldOwner.save();
+  trade.save();
+  monster.save();
+}
+
+export function handleTransfer(event: Transfer): void {
+  let from = event.params.from.toHex();
+  let to = event.params.to.toHex();
+
+  if (from == zeroAddress && to != zeroAddress) {
+    handleClaim(event);
+  } else if (from != zeroAddress && to != zeroAddress) {
+    handleOwnerChange(event);
+  }
+}
